@@ -61,6 +61,7 @@ public class CallUnixWrapper {
 	}
 	
 	public static void initActions(String mode, String ip) {
+
 		new FixedAction().ifGet("FreeBSD/mips (freebsd-wifi)").out("root").withNewLine().register();
 		new FixedAction().ifGet("login: root").out("uname -a").delay(100).withNewLine().register();
 		new FixedAction().ifGet("# uname -a").out("devinfo -r").delay(100).withNewLine().register();
@@ -77,6 +78,7 @@ public class CallUnixWrapper {
 		case "FWUPLOAD":
 			new FixedAction().ifGet("FreeBSD is a registered trademark of The FreeBSD Foundation.")
 				.failTest().out("Standard boot, no FW update").register();
+			new FixedAction().ifGet("done. ").finishTest().register();
 			break;
 		}
 	}
@@ -87,14 +89,14 @@ public class CallUnixWrapper {
 		String ip = "";
 		
 		for(String arg : args){
-			if(arg.equals("-c"))
-				mode = arg.substring(2);
+			if(arg.equals("-c="))
+				mode = arg.substring(3);
 			
 			if(arg.equals("-s"))
 				stdout = true;
 			
-			if(arg.startsWith("-i"))
-				ip = arg.substring(2);
+			if(arg.startsWith("-i="))
+				ip = arg.substring(3);
 		}
 		ProcessBuilder pb = new ProcessBuilder("cu", "-115200", "-l", "cuaU0");
 		pb.redirectErrorStream(true);
