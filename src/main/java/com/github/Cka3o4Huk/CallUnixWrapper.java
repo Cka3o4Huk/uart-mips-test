@@ -55,10 +55,12 @@ public class CallUnixWrapper {
 		log.close();
 		Thread.sleep(300);
 	}
-
-	static final String BOOT_CUSTOM_KERNEL = "boot -tftp -raw -addr=0x80800000 -max=0x770000 192.168.1.177:kernel.BCM.tramp.bin";
 	
-	public static void initActions(boolean customKernel) {
+	public static String tftpBootCustomKernel(String ip){
+		return "boot -tftp -raw -addr=0x80800000 -max=0x770000 " + ip + ":kernel.BCM.tramp.bin";
+	}
+	
+	public static void initActions(boolean customKernel, String ip) {
 		new FixedAction().ifGet("FreeBSD/mips (freebsd-wifi)").out("root").withNewLine().register();
 		new FixedAction().ifGet("login: root").out("uname -a").delay(100).withNewLine().register();
 		new FixedAction().ifGet("# uname -a").out("devinfo -r").delay(100).withNewLine().register();
@@ -68,7 +70,7 @@ public class CallUnixWrapper {
 		
 		if (customKernel){
 			new FixedAction().ifGet("Init Arena").out("" + ((char) 3)).register();
-			new FixedAction().ifGet("Startup canceled").out(BOOT_CUSTOM_KERNEL).withNewLine().register();
+			new FixedAction().ifGet("Startup canceled").out(tftpBootCustomKernel(ip)).withNewLine().register();
 			new FixedAction().ifGet("*** command status = -21").failTest().out("No ethernet connectivity between router and PC").register();
 		}
 	}
@@ -76,6 +78,7 @@ public class CallUnixWrapper {
 	public static void main(String[] args) {
 		boolean customKernel = false;
 		boolean stdout = false;
+		String ip = "";
 		
 		for(String arg : args){
 			if(arg.equals("-c"))
@@ -83,6 +86,9 @@ public class CallUnixWrapper {
 			
 			if(arg.equals("-s"))
 				stdout = true;
+			
+			if(arg.startsWith("-i"))
+				ip = arg.substring(2);
 		}
 		ProcessBuilder pb = new ProcessBuilder("cu", "-115200", "-l", "cuaU0");
 		pb.redirectErrorStream(true);
@@ -90,7 +96,7 @@ public class CallUnixWrapper {
 			Process p = pb.start();
 			InputStream is = p.getInputStream();
 			OutputStream os = p.getOutputStream();
-			initActions(customKernel);
+			initActions(customKernel, ip);
 			prepareShutdown(p);
 			configure(is, os, stdout);
 			process();
