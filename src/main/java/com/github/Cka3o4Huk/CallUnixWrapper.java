@@ -61,7 +61,7 @@ public class CallUnixWrapper {
 	}
 	
 	public static void initActions(String mode, String ip) {
-
+		System.out.println("Using mode: " + mode);
 		new FixedAction().ifGet("FreeBSD/mips (freebsd-wifi)").out("root").withNewLine().register();
 		new FixedAction().ifGet("login: root").out("uname -a").delay(100).withNewLine().register();
 		new FixedAction().ifGet("# uname -a").out("devinfo -r").delay(100).withNewLine().register();
