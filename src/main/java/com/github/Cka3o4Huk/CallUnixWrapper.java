@@ -89,7 +89,7 @@ public class CallUnixWrapper {
 		String ip = "";
 		
 		for(String arg : args){
-			if(arg.equals("-c="))
+			if(arg.startsWith("-c="))
 				mode = arg.substring(3);
 			
 			if(arg.equals("-s"))
