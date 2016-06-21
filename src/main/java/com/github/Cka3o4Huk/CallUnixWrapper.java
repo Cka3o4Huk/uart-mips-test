@@ -11,14 +11,16 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 
 public class CallUnixWrapper {
-	static BufferedReader br;
-	static BufferedWriter bw;
-	static BufferedWriter log;
+	public static BufferedReader br;
+	public static BufferedWriter bw;
+	public static BufferedWriter log;
+	public static BufferedReader console;
 
 	public static void configure(InputStream is, OutputStream os, boolean stdout) throws IOException {
 		br = new BufferedReader(new InputStreamReader(is));
 		bw = new BufferedWriter(new OutputStreamWriter(os));
 		log = new BufferedWriter((stdout) ? new PrintWriter(System.out) : new FileWriter("log.lst"));
+		console = new BufferedReader(new InputStreamReader(System.in));
 	}
 
 	public static void prepareShutdown(Process p) {
@@ -39,7 +41,7 @@ public class CallUnixWrapper {
 			log.newLine();
 			log.flush();
 
-			if (ActionProcessor.process(line, bw))
+			if (ActionProcessor.process(line, br, bw))
 				break;
 		}
 		
@@ -57,16 +59,19 @@ public class CallUnixWrapper {
 	}
 	
 	public static String tftpBootCustomKernel(String ip){
-		return "boot -tftp -raw -addr=0x80800000 -max=0x770000 " + ip + ":kernel.BCM.tramp.bin";
+		return "boot -tftp -raw -addr=0x80900000 -max=0x770000 " + ip + ":kernel.BCM.tramp.bin";
 	}
 	
-	public static void initActions(String mode, String ip) {
+	public static void initActions(String mode, String ip, boolean interactive) {
 		System.out.println("Using mode: " + mode);
 		new FixedAction().ifGet("FreeBSD/mips (freebsd-wifi)").out("root").withNewLine().register();
 		new FixedAction().ifGet("login: root").out("uname -a").delay(100).withNewLine().register();
 		new FixedAction().ifGet("# uname -a").out("devinfo -r").delay(100).withNewLine().register();
-		new FixedAction().ifGet("# devinfo -r").out("hostname").delay(500).withNewLine().register();
-		new FixedAction().ifGet("# hostname").finishTest().register();
+		new FixedAction().ifGet("# devinfo -r").out("kenv").delay(500).withNewLine().register();
+		new FixedAction().ifGet("# kenv").out("ifconfig").delay(500).withNewLine().register();
+		new FixedAction().ifGet("# ifconfig").out("ls /dev").delay(500).withNewLine().register();
+		new FixedAction().ifGet("# ls /dev").out("hostname").delay(500).withNewLine().register();
+		new FixedAction(interactive).ifGet("# hostname").failTest().register();
 		new FixedAction().ifGet("all ports busy").failTest().out("Another CU is running").register();
 		
 		switch(mode){
@@ -74,6 +79,7 @@ public class CallUnixWrapper {
 			new FixedAction().ifGet("Init Arena").out("" + ((char) 3)).register();
 			new FixedAction().ifGet("Startup canceled").out(tftpBootCustomKernel(ip)).withNewLine().register();
 			new FixedAction().ifGet("*** command status = -21").failTest().out("No ethernet connectivity between router and PC").register();
+			new FixedAction().ifGet("*** command status = -24").failTest().out("No ethernet connectivity between router and PC (different domains)").register();
 			break;
 		case "FWUPLOAD":
 			new FixedAction().ifGet("FreeBSD is a registered trademark of The FreeBSD Foundation.")
@@ -81,11 +87,15 @@ public class CallUnixWrapper {
 			new FixedAction().ifGet("done. ").finishTest().register();
 			break;
 		}
+		
+		new FixedAction(interactive).ifGet("Manual root filesystem specification").failTest().out("NO MOUNT").register();
+		new FixedAction(interactive).ifGet("Stopped at ").failTest().out("KERNEL PANIC!").register();
 	}
 
 	public static void main(String[] args) {
 		String mode = "";
 		boolean stdout = false;
+		boolean interactive = false;
 		String ip = "";
 		
 		for(String arg : args){
@@ -94,6 +104,9 @@ public class CallUnixWrapper {
 			
 			if(arg.equals("-s"))
 				stdout = true;
+			
+			if(arg.equals("-p"))
+				interactive = true;
 			
 			if(arg.startsWith("-i="))
 				ip = arg.substring(3);
@@ -104,7 +117,7 @@ public class CallUnixWrapper {
 			Process p = pb.start();
 			InputStream is = p.getInputStream();
 			OutputStream os = p.getOutputStream();
-			initActions(mode, ip);
+			initActions(mode, ip, interactive);
 			prepareShutdown(p);
 			configure(is, os, stdout);
 			process();

@@ -1,5 +1,6 @@
 package com.github.Cka3o4Huk;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,9 +16,9 @@ public class ActionProcessor {
 		actions.add(e);
 	}
 	
-	public static boolean process(String line, BufferedWriter writer) throws InterruptedException, IOException{
+	public static boolean process(String line, BufferedReader reader, BufferedWriter writer) throws InterruptedException, IOException{
 		for(Action action : actions)
-			if(action.perform(line, writer))
+			if(action.perform(line, reader, writer))
 				return true;
 		return false;
 	}

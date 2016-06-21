@@ -1,5 +1,6 @@
 package com.github.Cka3o4Huk;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 
@@ -11,7 +12,10 @@ public interface Action {
 	public String out();
 	public boolean isNewLineRequired();
 	
-	public default boolean perform(String line, BufferedWriter writer) throws InterruptedException, IOException{
+	public void performInternal(BufferedReader reader, BufferedWriter writer) throws IOException;
+	
+	public default boolean perform(String line, BufferedReader reader, BufferedWriter writer) 
+			throws InterruptedException, IOException {
 		if(taste(line)){
 			if(isTestFinished()){
 				ActionProcessor.result(this);
@@ -21,11 +25,7 @@ public interface Action {
 			if(outputDelay() > 0)
 				Thread.sleep(outputDelay());
 			
-			writer.write(out());
-			if(isNewLineRequired())
-				writer.newLine();
-			
-			writer.flush();
+			performInternal(reader, writer);
 		}
 		return false;
 	}
